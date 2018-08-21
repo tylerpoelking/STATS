@@ -1,0 +1,14 @@
+model
+{
+ for(i in 1:nFac){
+    salary[i] ~ dnorm(theta[dept[i]], prec_sigma2)
+  }
+  for(j in 1:D){
+      theta[j] ~ dnorm(mu, prec_tau2)
+    }
+  mu ~ dnorm(110, 1/625)
+  sigma2 ~ dgamma(3, 10)
+  prec_sigma2 <- pow(sigma2, -1)
+  tau2 ~ dgamma(3, 10)
+  prec_tau2 <- pow(tau2, -1)
+}

@@ -1,0 +1,92 @@
+---
+title: "Homework_3"
+author: "Tyler Poelking"
+date: "1/31/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Question 1)
+Title: To jump or not to jump: The Bereitschaftspotential required to jump into 192-meter abyss
+
+URL: https://www.biorxiv.org/content/biorxiv/early/2018/01/27/255083.full.pdf
+
+Acts humans choose to partake in are preceded by a negative electrical brain potential called the Bereitschaftspotential (BP). Before, the BP required to initiate such voluntary actions had to be carefully studied in a closed lab environment. Now, for the first time, we are able to record the BP prior to taking a life-threatening action. In this study, the BP required before taking a jump into a 192-meter abyss was studied and found to be NOT statistically different than the spatiotemporal dynamics of the BP required for the less extreme tasks previously studied under the closed lab conditions.
+
+a.	
+The hypothesis: 
+Null: The BP before performing a life-threatening task = The BP before performing a non-life threatening task (in this case jumping off a 1-meter block).
+Alternative: The BP before performing a life-threatening task != The BP before performing a non-life-threatening task (in this case jumping off a 1-meter block). 
+
+The results were as follows:
+They found no difference in BP onset comparing BPs recorded before bungee jumping (jumper 1: Mdn = -1.81 s; jumper 2: Mdn = -1.29 s) and BPs recorded before jumping from a 1-meter block (jumper 1: Mdn = -1.80 s; jumper 2: Mdn = -1.06 s) (jumper 1: U = 75, p = .978, jumper 2: U = 72, p = .684). 
+
+The Mdn refers to the mean BP change of all the trials in the test. The p-values implies there is no significantly statistical difference between the two tasks. Thus, we fail to reject the null hypothesis in favor of the alternative hypothesis. 
+
+b.	
+I have highlighted the main p- values of interest. For someone without formal statistical training, you can say they essentially state that, under the null, the chances of observing results as or more extreme as the results observed is quite high (97.8% and 68.4%, respectively). This implies that the data provides evidence in favor of the null hypothesis (that the BP levels are equal between both types of tasks). 
+
+
+Question 2)
+```{r Question 2 Part A}
+
+#ratio of deaths to all patients. This is the posterior probability of death within one year
+Post_Prob_death_BB = 22/700
+Post_Prob_death_BB
+
+#draw 1000 samples
+a1 = 22+1
+b1 = 700 - 22 + 1
+sample1 = rbeta(1000, a1, b1)
+
+#test mean of sample is close to Post_Prob_death__BB
+mean(sample1)
+
+hist(sample1)
+
+```
+
+
+```{r Question 2 Part B}
+
+#ratio of deaths to all patients. This is the posterior probability of death within one year
+Post_Prob_death_Not_BB = 39/674
+Post_Prob_death_Not_BB
+
+#draw 1000 samples
+a0 = 39+1
+b0 = 674 - 39 + 1
+sample0 = rbeta(1000, a0, b0)
+
+#test mean of sample2 is close to Post_Prob_death_Not_BB
+mean(sample0)
+
+hist(sample0)
+
+```
+
+```{r Question 2 Part C}
+
+diff = sample1 - sample0
+
+#E[θ1−θ0|y1,y0] 
+m = mean(diff)
+m
+
+#Var[θ1−θ0|y1,y0)]
+s_2 = var(diff)
+s_2
+
+#posterior probability that the one-year death rate of ACD individuals taking beta-blockers is less than the one-year probability of death for individuals not taking beta blockers
+p = sum(diff<0)/length(diff)
+p
+
+
+```
+
+
+
+

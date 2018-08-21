@@ -1,0 +1,121 @@
+---
+title: "Homework 2 - 4620"
+author: "Tyler Poelking"
+date: "9/18/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Problem 1:
+a) When the Bayes decision boundry is linear, LDA is expected to perform better on both the training and the test set. This is because of the bias-variance tradeoff. QDA involves higher variance and thus will overfit to the data. In this scenario, the QDA decision boundary is inferior, because it suffers from higher variance without a corresponding decrease in bias.
+
+b) Contrastly, when the Bayes decision boundry is non-linear, QDA is expected to perform better on both the training and the test set. Again, this is because of the bias-variance tradeoff. QDA involves higher variance and can account for the varying covariance matrices between the K classes. In this scenario LDA will suffer from high bias. 
+
+c) As the sample size n increases, we expect the prediction accuracy of QDA to be superior to that of LDA. This is because, with a large training set, we do not want to have to be concerned about the variance of the classifier. This benefit outweighs the fact that QDA tends to require more time and computational power.  
+
+d) False. Unless the co-variance matrices between the training data's K classes is extremely linear, QDA will account for noise in the data and consider it reality (overfit it), thus leading to suffering performance and test error rate.
+
+
+```{r Problem 10 Page 171}
+#Install + load package
+#install.packages("ISLR")
+library(ISLR)
+
+summary(Weekly)
+head(Weekly)
+
+pairs(Weekly)
+
+#remove factor vars so cor function works
+cor(Weekly[, -9])
+
+Weekly$Direction =as.factor(Weekly$Direction)
+attach(Weekly)
+
+boxplot(Volume~Direction, main="Volume by Directions", 
+xlab="Direction", ylab="Volume")
+
+boxplot(Today~Direction, main="Today by Directions", 
+xlab="Direction", ylab="Today")
+
+```
+
+Year and Volume appear to be exponentially related. Specifically, as Year increases, the Volume increases at an increasing rate. The scatter plots also show that there aren't many strong correlations amongst the continuous variables in the dataset. Though it does reveal several potential outliers. 
+
+The spread of Volume between the two Directions are quite similar to each other. The spread of Today between the two Directions, however, differ. Specifically, the mean Today of the 'down' direction is smaller than the mean Today of the 'up' direction, and most of the outliers in the 'down' group are below its mean, while most the outliers in the 'up' group are above the mean. 
+
+
+
+```{r Problem 10 part b, echo=FALSE}
+
+
+model <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly, 
+    family = binomial(link='logit'))
+
+summary(model)
+```
+
+One predictor, Lag2, seems to have statistical significance in predicting Direction in this model, since it has a p-value of 0.296 in the summary table above. 
+
+
+```{r Problem 10 part c, echo=FALSE}
+model.probs = predict(model, type = "response")
+model.pred = rep("Up", length(model.probs))
+model.pred[model.probs <= 0.5] = "Down"
+table(model.pred, Direction)
+```
+The majority of observations belong to the 'Up' Direction class. The precision of this class is 557/(557+430) = 56.38% and the precision of the 'Down' class is 54/(54+48) = 52.9%. The recall of the 'Up' class is 557/(557+48) = 92.1% and the recall of the 'Down' class is 54/(430+54) = 11.2%. Therefore, the logistic regression is wrong the most during the weeks the market has gone down.
+
+The percent of predictions correct is only (54+557)/(54+557+48+430) = 56.1%. 
+
+
+```{r Problem 10 part d, echo=FALSE}
+train = (Year < 2009)
+Weekly.test = Weekly[!train, ]
+Weekly.train = Weekly[train, ]
+
+#validate train and test sets
+unique(Weekly.test['Year'])
+unique(Weekly.train['Year'])
+
+model2 <- glm(Direction ~ Lag2, data = Weekly.train, 
+    family = binomial(link='logit'))
+
+model2.probs = predict(model2, Weekly.test,type = "response")
+model2.pred = rep("Up", length(model2.probs))
+model2.pred[model2.probs <= 0.5] = "Down"
+table(model2.pred, Weekly.test[['Direction']])
+
+```
+
+The overall fraction of correct predictions is (9+56)/(9+5+34+56) = 65/104 = 62.5%
+
+```{r Problem 10 part e, echo=FALSE}
+
+library(MASS)
+
+model3 <- lda(Direction ~ Lag2, data = Weekly.train, 
+    family = binomial(link='logit'))
+
+model3.pred = predict(model3, Weekly.test)
+#model3.pred = rep("Up", length(model3.probs))
+#model3.pred[model3.probs <= 0.5] = "Down"
+table(model3.pred$class, Weekly.test[['Direction']])
+
+```
+The overall fraction of correct predictions for this LDA model is (9+56)/(9+5+34+56) = 65/104 = 62.5%
+
+Precision for 'Up': 56/(56+34) = 62.2%
+Precision for 'Down': 9/(9+5) = 64.3%
+Recall for 'Up': 56/(56+5) = 91,8%
+Recall for 'Down': 9/(34+9) = 20.9%
+
+
+
+Problem 10 part h:
+
+LDA and Logistic Regression provide the same test results so one is not better than the other under this test set. 
+

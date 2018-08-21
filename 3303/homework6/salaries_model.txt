@@ -1,0 +1,12 @@
+model
+{
+	for(i in 1:deptsUniqCount){
+		theta[i] ~ dnorm(mu, prec.btw) 
+		for (j in 1:deptsCounts[i]){
+			sal.Matrix[j,i] ~ dnorm(theta[i], prec.within)
+		}
+	}
+	mu ~ dnorm(110,1/625)
+	prec.within ~ dgamma(3,10) 
+	prec.btw ~ dgamma(3,10)
+}

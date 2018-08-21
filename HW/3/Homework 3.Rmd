@@ -1,0 +1,400 @@
+---
+title: "Homework3 - Stats 2620"
+author: "Tyler Poelking, Cornell Blake"
+date: "10/15/2017"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(leaps)
+library(glmnet)
+library(MASS)
+library(pls)
+load("~/Desktop/All Stuff/School Stuff/STATS/HW/3/uni.Rdata")
+
+#Extracts Cp, BIC, and R^2 from model
+mysummary <- function(k){
+    k.summary = summary(k)
+    print(k.summary)
+    
+    print('Cps: ')
+    print(k.summary$cp)
+    plot(k.summary$cp, xlab = "Number of Variables", ylab = "Cp", main = 'Cp')
+    minCpIndex = which.min(k.summary$cp)
+    print('Optimal model variable count:')
+    print(minCpIndex)
+    points(minCpIndex, k.summary$cp[minCpIndex], pch = 20, col = "red")
+    plot(k, scale='Cp')
+
+    print('BICs: ')
+    print(k.summary$bic)
+    plot(k.summary$bic, xlab = "Number of Variables", ylab = "bic", main = 'BIC')
+    minBICIndex = which.min(k.summary$bic)
+    print('Optimal model variable count:')
+    print(minBICIndex)
+    points(minBICIndex, k.summary$bic[minBICIndex], pch = 20, col = "red")
+    
+    
+    print('R-squared: ')
+    print(k.summary$rsq)
+    plot(k.summary$rsq, xlab = "Number of Variables", ylab = "Rsq", main = 'Rsq')
+    maxRIndex = which.max(k.summary$rsq)
+    print('Optimal model variable count:')
+    print(maxRIndex)
+    points(maxRIndex, k.summary$rsq[maxRIndex], pch = 20, col = "red")
+}
+```
+
+
+#Question 1
+ 
+a) The lasso, relative to least squares: iii is true. Lasso is less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance. 
+
+b) Ridge regression relative to least squares: Again, iii is true. Ridge regression is less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance. 
+
+c) Non-linear methods relative to least squares: ii is true. Non- linear methods are more flexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease in bias.
+
+#a-c)
+```{r Question 2 a-c}
+
+#Part a
+set.seed(42)
+X = rnorm(n=100)
+e = rnorm(n=100)
+
+# B0=1 B1=3 B2=2 B3=1
+B = c(1,3,2,1)
+
+#Part B
+Y = rep(B[1], 100)
+Y = Y + (B[2]*X)+ (B[3]*X^2)+ (B[4]*X^3)+ e
+
+#Part C
+x_data = data.frame(X, X^2, X^3, X^4, X^5, X^6, X^7, X^8, X^9, X^10, Y)
+colnames(x_data) =c('X', 'X^2', 'X^3', 'X^4', 'X^5', 'X^6', 'X^7', 'X^8', 'X^9', 'X^10', 'Y')
+
+
+
+a<-regsubsets(Y~., data = x_data, nvmax = 10)
+
+mysummary(a)
+
+```
+
+The 7th model is best according to Cp.
+The 5th model is best according to BIC.
+The 8th model is best according to R-Squared.
+
+#d)
+```{r Question 2 d.forward}
+a2<-regsubsets(Y~., data = x_data, method = "forward", nvmax = 10)
+mysummary(a2)
+
+```
+
+The 6th model is best according to Cp.
+The 6th model is best according to BIC.
+The 8th model is best according to R-Squared.
+
+
+```{r Question 2 d.backward}
+a3<-regsubsets(Y~., data = x_data, method = "backward", nvmax = 10)
+mysummary(a3)
+
+```
+
+The 7th model is best according to Cp.
+The 5th model is best according to BIC.
+The 8th model is best according to R-Squared.
+
+
+The model with the most amount of variables always has the larges R-squared value becasue, unlike Cp and BIC, there is no punishment for adding cofactors in the calculation for R-squared. That being said, it is not suprising that the best model according to the R-Squared value is consistently the model with 8 variables. That model is the same between the exaustive search and backward search, which is the model that includes every X except X^3 and X^10. For forward stepwise, that model is the model that includes every X except X^6 and X^8. 
+
+According to Cp, the best model found in the exaustive search was the model with 7 variables, which included every X except X^3, X^4, and X^10. For the forward stepwise it was the model includeing 6 variables (X to the 1,2,3,5,7, and 9th power). For the backward stepwise it was the same 7 variable model found from the exaustive search. 
+
+According to BIC, the best model found in the exaustive search was the model with 5 variables (X to the 1,2,5,7, and 9th power). The same 5 variable model was found in when backward stepwise was applied. For the forward stepwise, however, the 6 variable model with X to the 1,2,3,5,7, and 9th powers was the best. 
+
+#e)
+```{r Question 2 e}
+#fit lasso reg. model
+x_dataM = as.matrix(x_data)
+grid = seq(0,10, length =100)
+lasso.mod=glmnet(x_dataM[,-11],x_dataM[ ,11],alpha=1, lambda = grid)
+plot(lasso.mod, label=TRUE)
+
+#Cross-validation
+set.seed(42)
+#x_dataf = as.data.frame(x_data) 
+cv.out=cv.glmnet(x_dataM[,-11],x_dataM[ ,11],alpha=1)
+plot(cv.out)
+
+
+```
+
+```{r Question 2 e continued}
+#find lambda corresponding to smallest mse
+bestlam =cv.out$lambda.min
+bestlam
+
+#extract coeficients for model with this lambda
+coef(cv.out, s = "lambda.min")
+
+```
+
+The lambda that gives the smallest cross-validated mean-squared error is 0.168265. This lambda corresponds with the point on the cross-validation graph whose log(Lambda) = log(0.168265) = -0.77401, which is the point between the two calculated vertical dotted lines. The coefficient values can be found in the 11 x 1 spase matrix above. Notice that X, X^2, and X^3 are the only covariates with non-zero coefficients, and their coefficients are 3.07, 1.77, and 0.91, correspondingly. Remember our data was created using the real coefficient valeus of 3, 2, and 1. Thus, this model is fairly accurate in its assumptions. It overestimates the X coefficient, and underestimate both the X^2 and the X^3 coefficient. The fact that these particular covariates have non-zero coeficients for the optimal model is not suprising, since our data was generated using exclusively these three variables.
+
+#Data Generation)
+```{r Question 2 Data Generation}
+
+
+# B0=1 B7=2.5
+B_2 = c(1,2.5)
+
+Y_2 = rep(B_2[1], 100)
+Y_2 = Y_2 + (B_2[2]*X^7) + e
+
+
+x_data_2 = data.frame(X, X^2, X^3, X^4, X^5, X^6, X^7, X^8, X^9, X^10, Y_2)
+colnames(x_data) =c('X', 'X^2', 'X^3', 'X^4', 'X^5', 'X^6', 'X^7', 'X^8', 'X^9', 'X^10', 'Y_2')
+
+```
+
+#Subset Selection)
+```{r Question 2 Subset Selection }
+
+#Exhaustive
+b<-regsubsets(Y_2~., data = x_data_2, nvmax = 10)
+mysummary(b)
+
+```
+
+Performing exhaustive subset selection via regsubsets, we see that the optimal model according to Cps is the 6 cofactor model with X to the power of 3, 5, 7, 8, 9, and 10. For tihs model, the Cp is at a minimum of 4.643057.
+
+According to the BIC measure the optimal model is the 4 cofactor model with X to the power of 3, 5, 7, and 9. For this model, the BIC is at a minimum of -1297.765.
+
+
+Similar to the previous problem, the optimal model according to the R-squared is unsuprisingly the model with the most amount of cofactors. Here, all models considered have a very large r-squared, since the one variable model sufficiently explains the response variable Y (since it was made with only one variable X^7).
+
+#f)
+```{r Question 2 f Lasso }
+#fit lasso reg. model
+x_dataM_2 = as.matrix(x_data_2)
+
+lasso.mod_2=glmnet(x_dataM_2[,-11],x_dataM_2[ ,11],alpha=1, lambda = grid)
+plot(lasso.mod_2, label=TRUE)
+
+#Cross-validation
+set.seed(42)
+#x_dataf_2 = as.data.frame(x_data_2) 
+cv.out_2=cv.glmnet(x_dataM_2[,-11],x_dataM_2[ ,11],alpha=1)
+plot(cv.out_2)
+
+```
+
+```{r Question 2 f Lasso Continues}
+#find lambda corresponding to smallest mse
+bestlam_2 =cv.out_2$lambda.min
+bestlam_2
+
+#extract coeficients for model with this lambda
+coef(cv.out_2, s = "lambda.min")
+
+```
+The lambda that gives the smallest cross-validated mean-squared error is 19.60987. This lambda corresponds with the point on the cross-validation graph whose log(Lambda) = log(19.60987) = 1.2924, which is the point between the two calculated vertical dotted lines. The coefficient values can be found in the 11 x 1 spase matrix above. Notice that X^7 is the only covariate with non-zero coefficients, and it coefficient is 2.5. Remember our data was created using the real coefficient valeu of 2.5. Thus, this model is accurate in its assumptions, though it underestimates the X^2 coefficient. Again, the fact that this particular covariate has a non-zero coeficient in the optimal model is not suprising, since our data was generated using exclusively this X^7 variable multiplied by 2.5.
+
+
+
+#a)
+```{r}
+indexes = sample(1:nrow(uni), size=0.5*nrow(uni))
+test = uni[indexes,]
+train = uni[-indexes,]
+```
+
+#b)
+```{r}
+uniTrainingLM <- lm(Apps ~ ., train)
+summary(uniTrainingLM)
+
+#Calculate MSE on training set
+mean(residuals(uniTrainingLM)^2)
+
+#Calculate MSE on test set by calculating residuals
+mean(((test$Apps)-predict(uniTrainingLM,test))^2)
+```
+
+The mean square error of the linear model is `r mean(((test$Apps)-predict(uniTrainingLM,test))^2)`
+
+#c)
+```{r}
+#Convert data to format usable by glmnet package, split into appropriate test and training data sets
+x=model.matrix(Apps~.,uni)[,-1]
+xTest = x[indexes,]
+xTrain = x[-indexes,]
+
+y=uni$Apps
+yTest = uni[indexes,]$Apps
+yTrain = uni[-indexes,]$Apps
+```
+
+```{r}
+ridge.cv = cv.glmnet(xTrain,yTrain,alpha=0)
+lambda.cv = ridge.cv$lambda.min
+lambda.cv
+
+fit.ridge = glmnet(xTrain,yTrain,alpha=0,lambda=lambda.cv)
+pred.ridge = predict(fit.ridge,newx=xTest)
+mean((yTest-pred.ridge)^2)
+```
+
+The lambda minimized by cross-validation in the ridge regression model is `r lambda.cv`, and the resulting test error is `r mean((yTest-pred.ridge)^2)`
+
+#d)
+```{r}
+lasso.cv = cv.glmnet(xTrain,yTrain,alpha=1)
+lambda.cv = lasso.cv$lambda.min
+lambda.cv
+
+fit.lasso = glmnet(xTrain,yTrain,alpha=1,lambda=lambda.cv)
+pred.lasso = predict(fit.lasso,newx=xTest)
+mean((yTest-pred.lasso)^2)
+```
+
+The lambda minimized by cross-validation in the LASSO model is `r lambda.cv`, and the resulting test error is `r mean((yTest-pred.lasso)^2)`
+
+#e)
+```{r}
+fit.pcr = pcr(Apps~.,data=train,scale=TRUE,validation="CV")
+summary(fit.pcr)
+
+pcr_pred <- predict(fit.pcr, test)
+mean((pcr_pred - test$Apps)^2)
+
+validationplot(fit.pcr,val.type="MSEP")
+```
+
+Appears the smallest Cross Validation error occurs when all components are included in the model (M = 17)
+
+#f)
+```{r}
+mean(((test$Apps)-predict(uniTrainingLM,test))^2)  # Least Squares MSE
+mean((yTest-pred.ridge)^2)  # Ridge MSE
+mean((yTest-pred.lasso)^2)  # LASSO MSE
+mean((pcr_pred - test$Apps)^2)  # PCR MSE
+
+coef(uniTrainingLM)
+coef(fit.ridge)
+coef(fit.lasso)
+coef(fit.pcr)
+```
+
+We can measure the accuracy of a model through the Mean Squared Error calculated using a separate test set.  This measures the average squared residual and can assess how well a model fits a data set, in these cases test sets. The Least Squares Regression and the LASSO model both tend to have similar test errors, which are the lowest.  The ridge regression model tends to have higher test error, with the PCR model having the worst test error on average.  If these procedures were repeated for a different split between training and test sets, the trends usually hold but the values themselves change.
+
+```{r Question 4}
+
+attach(Boston)
+
+
+
+#Initial Summary
+#head(Boston)
+#summary(Boston)
+
+#remove factor like variables
+Boston_cont = subset(Boston, select=-c(rad, chas))
+
+#Pairplot
+pairs(Boston_cont, cex = .5)
+
+#Boxplot for factor var. rad
+boxplot(crim~rad, main="Crime Rate by Rad", 
+xlab="Rad", ylab="Crime Rate")
+
+#Boxplot for factor var. chas
+boxplot(crim~chas, main="Crime Rate by Chas", 
+xlab="Chas", ylab="Crime Rate")
+
+
+
+Boston_to_trans = subset(Boston, select=c(crim,age, dis, medv))
+
+#before transform
+pairs(Boston_to_trans)
+
+#transform
+Boston_to_trans[,2:4] = log(Boston_to_trans[,2:4])
+
+#after transform
+pairs(Boston_to_trans)
+
+
+
+#zn indus tax and ptratio all seem to only have high crime rates at one value. See which value that is 
+boxplot(crim~zn, main="Crime Rate by zn", xlab="zn", ylab="Crime Rate")
+boxplot(crim~indus, main="Crime Rate by indus", xlab="indus", ylab="Crime Rate")
+boxplot(crim~tax, main="Crime Rate by tax", xlab="tax", ylab="Crime Rate")
+boxplot(crim~ptratio, main="Crime Rate by ptratio", xlab="ptratio", ylab="Crime Rate")
+
+#zn = 0 , indus = 18.10 , 
+```
+
+
+Looking at the pairs plot, zn, indus, age, dis, tax, and ptratio seem to be the strongest possible contenders for covariates to be included in our model. This is of course based on their correlation with the crim variable (the top row). For the two factor covariates rad and chas, rad value of 24 seems to be correlated with larger crime rate and while the mean crim rate of chas=0 points is low, any point with a large crime rate had a chas=0. In orther words, very little of the chas=1 points had a large crime rate. 
+
+
+```{r Question 4 lasso model fitting}
+#fit lasso reg. model
+Boston_M = as.matrix(Boston)
+lambdas=seq(1e-3,1e3,length=100)
+lasso.mod_3=glmnet(Boston_M[,-1],Boston_M[ ,1],alpha=1, lambda = lambdas)
+plot(lasso.mod_3, label=TRUE)
+
+#Cross-validation
+set.seed(42)
+#Boston_df = as.data.frame(Boston_df) 
+cv.out_3=cv.glmnet(Boston_M[,-1],Boston_M[ ,1],alpha=1)
+plot(cv.out_3)
+
+```
+
+```{r Question 4 lasso model continued}
+#find lambda corresponding to smallest mse
+bestlam =cv.out_3$lambda.min
+bestlam
+
+#extract coeficients for model with this lambda
+coef(cv.out_3, s = "lambda.min")
+```
+```{r Question 4 lasso model continued.2}
+
+x = Boston_M[,-1]
+y=Boston_M[ ,1]
+finalModel1=glmnet(x,y,alpha=1, lambda = 0.05630926)
+#plotres(finalModel1, which=1)
+
+
+pred.lasso = predict(finalModel1,newx=x)
+mean((y-pred.lasso)^2)
+
+summary(finalModel1)
+fits <- fitted(finalModel1)
+## calculate the deviance residuals
+resids  <- (pred.lasso-y)
+fits
+plot(pred.lasso, resids, main = "Model Resids")
+abline(h=0, lty=2)
+
+#QQ to see if residuals follow normal
+qqnorm(y-pred.lasso)
+qqline(y-pred.lasso)
+
+```
+
+We use cross validation via the 'cv.glmnet' funciton in order to validate our model selection and paremeter (lambda) setting. The minimizing lambda for this lasso regression is 0.0563092. This lambda corresponds with the point on the cross-validation graph whose log(Lambda) = log(0.0563092.) = -1.24942, which is the point between the two calculated vertical dotted lines. The covariates determined not useful and thus whose coefficients are set to zero in the model are age and tax. While these two variables looked as though they may have been correlated with crime rate, they could have been left out of the model due to multicollinearity. We validated our model using cross validation and considered a large amount of lambdas as values. The optimal lambda fell comfortably in between the max and min of all the lambas considered. 
+
+
+The residuals are not optmial, but they do have decent amounts both above and below the y=0 line. They also, for the majority of the middle instances, follow the qq line in the last plot. They only stray from it in the early and the late theoretical quantiles.

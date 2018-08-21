@@ -1,0 +1,11 @@
+model
+{
+ for(i in 1:n){
+    theta[i] ~ dnorm(mu_0, pow(sigma2, -1))
+	y[i] ~ dbinom((exp(theta[i])/(1+exp(theta[i]))), numPlanted[i])
+ 
+ } 
+  mu_0 ~ dnorm(0, 1/4)
+  sigma2 ~ dunif(0, 4)
+  
+}

@@ -1,0 +1,307 @@
+---
+title: "Final"
+author: "Tyler Poelking"
+date: "4/21/2018"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r Setup, include =FALSE}
+set.seed(23422432)
+library(rjags)
+library(boot)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(reshape2)
+library(plyr)
+library(dplyr)
+
+```
+
+## Part I
+
+```{r Read In Data and Set Some Parameters}
+
+fluData <- read.table( "~/Desktop/All Stuff/School Stuff/STATS/3303/final/flu.txt", header=T )
+attach(fluData)
+
+nTotal <- length(Infected)
+nC <- length(unique(Country))
+countryNumeric = as.numeric(Country)
+```
+
+
+```{r Jags Model Setup}
+# create objects for JAGS
+dataList <- list( "Infected" = Infected,
+                  "EZK" = EZK,
+                  "country" = countryNumeric,
+                  "nC" = nC,
+                  "nTotal" = nTotal)
+# list of parameters to be monitored  
+parameters <- c( 
+                 "alpha", 
+                 "beta",
+                 "mu_alpha",
+                 "mu_beta",
+                 "sigma2_alpha",
+                 "sigma2_beta",
+                 "theta")
+# set initial values
+initsValues <- list( 
+                    "alpha" = rep(0, nC), 
+                     "beta" = rep(0, nC),
+                    "mu_alpha" = 0,
+                     "mu_beta" = 0,
+                     "sigma2_alpha" = 1,
+                     "sigma2_beta" = 1)
+
+# number of iteration for "tuning" 
+adaptSteps <- 5000 
+# number of iterations for "burn-in" 
+burnInSteps <- 5000   
+# number of chains to run
+nChains <- 2          
+# total number of iterations to save
+numSavedSteps <- 5000           
+# "thinning" (1 = keep every interation)
+thinSteps <- 1                  
+# iterations per chain
+ITER <- ceiling( (numSavedSteps * thinSteps) / nChains ) 
+# -------------
+# Run JAGS
+# -------------
+# create, initialize, and adapt the model
+jagsModel <- jags.model( "finalModel.txt", 
+                         data = dataList, 
+                         inits = initsValues, 
+                         n.chains = nChains, 
+                         n.adapt = adaptSteps )
+```
+```{r Run Jags}
+# burn-in the algorithm
+update( jagsModel, 
+        n.iter = burnInSteps )
+# run algorithm to get interations for inference
+codaSamples <- coda.samples( jagsModel, 
+                             variable.names = parameters, 
+                             n.iter = ITER, 
+                             thin = thinSteps )
+
+# -------------
+# Look at posterior samples
+# -------------
+# make a dataframe with the posterior samples
+mcmcChainDF <- data.frame( as.matrix( codaSamples, 
+                                      iters = T, 
+                                      chains = T ) )
+# create a vector with the variable names
+varNames <- names( mcmcChainDF )[3:( 26 )]
+# number of variables
+nVars <- length( varNames )
+mcmcChainDF$CHAIN <- as.factor(mcmcChainDF$CHAIN)
+# construct trace plots
+p <- list()
+for( k in 1:nVars )
+{
+  plot_frame <- mcmcChainDF
+  plot_frame$dep_var <- mcmcChainDF[ , varNames[k]]
+  p[[k]] <- ggplot( plot_frame, 
+                    aes( x = ITER, 
+                         y = dep_var))  +
+    geom_line( aes( color = CHAIN ) ) + 
+    labs( y = varNames[k] )
+}
+```
+
+```{r Trace Plots, fig.width = 8, fig.height=20}
+do.call( grid.arrange, c( p, list("ncol" = 1) ) )
+```
+
+
+The initial values are: 
+
+alpha = 0 for all 10 countries
+beta = 0 for all 10 countries
+mu_alpha = 0
+mu_beta = 0
+sigma2_alpha = 1
+sigma2_beta = 1
+
+The number of iterations for tuning and burn-in were set to 5000. Two chains ran for an additional 2,500 iterations each. The trace plots above show both chains appear to be sampling from the same distributions and are evenly bouncing around a centralized value with all apparent patterns repeating, thus providing evidence the algorithm converged. 
+
+
+Conditional Dependence: 
+In this model, we assume that if we know both the probability of infection of an individual at a particular country, the responses are independent. 
+
+We know the probability of infeciton of an individual at a particular country through the particular country's log odds that a subject whose EZK test was negative is infected, the particular country's difference in log offs of a subjet who scored positive on the EZK test's showing as infected relative to subjects who scored negative, and the individual's EZK test score.
+
+```{r Results}
+#boxplot of alphas and intercept
+alphaPostDFreshape <- melt( mcmcChainDF, 
+                       id.vars = "ITER",
+                       measure.vars = c("mu_alpha",
+                                        "alpha.1.",
+                                        "alpha.2.",
+                                        "alpha.3.",
+                                        "alpha.4.",
+                                        "alpha.5.",
+                                        "alpha.6.",
+                                        "alpha.7.",
+                                        "alpha.8.",
+                                        "alpha.9.",
+                                        "alpha.10."))
+ggplot(alphaPostDFreshape, 
+       aes(x = variable, y = value )) +
+  geom_boxplot() +
+  ylab( "posterior" ) +
+  xlab( "" ) + geom_hline(yintercept = mean(mcmcChainDF$mu_alpha), color = 'red')  
+
+#boxplot of betas
+betaPostDFreshape <- melt( mcmcChainDF, 
+                       id.vars = "ITER",
+                       measure.vars = c("mu_beta",
+                                        "beta.1.",
+                                        "beta.2.",
+                                        "beta.3.",
+                                        "beta.4.",
+                                        "beta.5.",
+                                        "beta.6.",
+                                        "beta.7.",
+                                        "beta.8.",
+                                        "beta.9.",
+                                        "beta.10."))
+ggplot(betaPostDFreshape, 
+       aes(x = variable, y = value )) +
+  geom_boxplot() +
+  ylab( "posterior" ) +
+  xlab( "" )+ geom_hline(yintercept =  mean(mcmcChainDF$mu_beta), color = 'red') 
+```
+*Note: When referring to a patient as being infected or not infected, we refer to the infected status derived from the highly accurate diagnositc test.
+
+The alphas capture the country-specific change in log odds that a subject whose EZK test is negative is infected. As a country's alpha increases, the likelihood of a subject who scored negative on the EKZ test actually having influenza increases.
+
+```{r Confirming Alpha Interpretations}
+
+#Get alpha based on entire data
+numer = fluData %>% filter(Infected ==1 & EZK ==0)
+denom = fluData %>% filter(EZK==0)
+logit(length(numer[[1]])/length(denom[[1]]))
+inv.logit(mean(mcmcChainDF$mu_alpha))
+
+#iterate through countries and get their true 'alpha '
+for (c in c("A", "B", "C","D", "E", "F", "G", "H","I", "J")){
+    country = subset(fluData, Country == c)
+    country_num <- country %>%
+          filter(EZK ==0 & Infected ==1)
+    country_den <- country %>%
+          filter(EZK==0)
+    print(length(country_num[[1]])/length(country_den[[1]]))
+    
+}
+
+#Find corresponding values for each country to compare
+print("Country's estimated inv.logit(alpha) based on model: ")
+cat("Country A: ",inv.logit(mean(mcmcChainDF$alpha.1.)))
+cat("Country B: ",inv.logit(mean(mcmcChainDF$alpha.2.)))
+cat("Country C: ",inv.logit(mean(mcmcChainDF$alpha.3.)))
+cat("Country D: ",inv.logit(mean(mcmcChainDF$alpha.4.)))
+cat("Country E: ",inv.logit(mean(mcmcChainDF$alpha.5.)))
+cat("Country F: ",inv.logit(mean(mcmcChainDF$alpha.6.)))
+cat("Country G: ",inv.logit(mean(mcmcChainDF$alpha.7.)))
+cat("Country H: ",inv.logit(mean(mcmcChainDF$alpha.8.)))
+cat("Country I: ",inv.logit(mean(mcmcChainDF$alpha.9.)))
+cat("Country J: ",inv.logit(mean(mcmcChainDF$alpha.10.)))
+
+```
+
+The betas capture the country-specific change in log odds that a subject whose EZK test is positive is infected, relative to the subject whose EZK test is negative. Adding a country specific's alpha and beta together derives the country specific log odds that, given the subject scored positive on the EZK test, the subject is infected.
+
+```{r Confirming Beta Interpretations}
+#For entire data
+with_infl = length(subset(fluData, EZK == 1)[[1]])
+with_infl_and_ezk_positive = length(subset(fluData, Infected == 1 & EZK ==1)[[1]])
+pos_ezk_success_rate = with_infl_and_ezk_positive/with_infl
+pos_ezk_success_rate
+
+inv.logit(mean(mcmcChainDF$mu_alpha) + mean(mcmcChainDF$mu_beta))
+
+#iterate through countries and get their true 'alpha + beta'
+for (c in c("A", "B", "C","D", "E", "F", "G", "H","I", "J")){
+    #subset country A. Based on data
+    country = subset(fluData, Country == c)
+    country_with_infl = length(subset(country, EZK == 1)[[1]])
+    country_with_infl_and_ezk_positive = length(subset(country, Infected == 1 & EZK ==1)[[1]])
+    country_success_rate = country_with_infl_and_ezk_positive/country_with_infl
+    print(country_success_rate)
+}
+
+#Find corresponding values for each country to compare
+print("Country's estimated inv.logit(alpha+beta) based on model: ")
+cat("Country A: ", inv.logit(mean(mcmcChainDF$alpha.1.) + mean(mcmcChainDF$beta.1.)))
+cat("Country B: ", inv.logit(mean(mcmcChainDF$alpha.2.) + mean(mcmcChainDF$beta.2.)))
+cat("Country C: ",inv.logit(mean(mcmcChainDF$alpha.3.) + mean(mcmcChainDF$beta.3.)))
+cat("Country D: ",inv.logit(mean(mcmcChainDF$alpha.4.) + mean(mcmcChainDF$beta.4.)))
+cat("Country E: ",inv.logit(mean(mcmcChainDF$alpha.5.) + mean(mcmcChainDF$beta.5.)))
+cat("Country F: ",inv.logit(mean(mcmcChainDF$alpha.6.) + mean(mcmcChainDF$beta.6.)))
+cat("Country G: ",inv.logit(mean(mcmcChainDF$alpha.7.) + mean(mcmcChainDF$beta.7.)))
+cat("Country H: ",inv.logit(mean(mcmcChainDF$alpha.8.) + mean(mcmcChainDF$beta.8.)))
+cat("Country I: ",inv.logit(mean(mcmcChainDF$alpha.9.) + mean(mcmcChainDF$beta.9.)))
+cat("Country J: ",inv.logit(mean(mcmcChainDF$alpha.10.) + mean(mcmcChainDF$beta.10.)))
+
+```
+```{r Variance Exploration}
+#column variances
+apply(mcmcChainDF[3:26], 2, var)
+```
+The interpretation confirmations were done to ensure the accuracy of my understanding of the model. I compared what my model predicted with what the true population was to ensure my understanding. It can be observed that if the alpha as determined by the original data is above the mean alpha across the whole data, the predicted value of alpha will also be above the mean alpha across the whole data. Same goes for values below the mean. This can also be said for my interrpretations of beta+alpha. If the beta+alpha as determined by the original data is above the mean alpha+beta across the whole data, the predicted value of alpha+beta will also be above the mean alpha+beta across the whole data. Same goes for valeus below the mean. Note that this was merely for confirmation of my understanding. No inferences were made using the original data.
+
+The mean of mu_alpha is -0.867. Taking the inverse logit, we get that an estimated 29.6% of subjects who scored negative on the EZK test actually have influenza. Country A had a mean alpha of -0.77 which corresponds to 31.7% of subjects who scored negative on EZK actually having influenza. Therefore, country A's performance in this regard was worse than average. Other countries who had mean alphas above average were C, D, F and G. F and G were the worst at 31.5% and 31.7% respectively. Inversely, countries with lower than average alphas performed better in this regard. Countries, B, E, H, I, and J were in this category, with country B having the lowest percentage of 27.1%.
+
+The mean of mu_alpha + mu_beta is 0.87. Taking the inverse logit, we get that an estimated 70.6% of subjects who scored positive on the EZK test actually have influenza. Country A had a mean alpha+beta corresponding to 76.1% of subjects who scored positive on EZK actually having influenza.
+Therefore, country A's performance in this regard was better than average. Other countries who had mean alpha+betas above average were A, D, G, and I. A and D were the best at 76.1% and 75.5% respectively. Inversely, counties with lower than average alpha+betas performed worse in this regard. Counties B, C, E, F, H, and J were in this category, with country H and B having the lowerest percentage at 65.1% and 65.4% respectively.
+
+##Part 2
+
+```{r Finding Necessary Probabilities}
+country_D = subset(fluData, Country == "D")
+
+#Given EZK = 0, probability that Infected = 1
+p_infected_ezk_0 = inv.logit(mean(mcmcChainDF$alpha.4.))
+cat("Given EZK = 0, probability that Infected = 1: ",p_infected_ezk_0)
+
+#Given EZK = 0, probability that Infected = 0
+p_not_infected_ezk_0 = 1-p_infected_ezk_0
+cat("Given EZK = 0, probability that Infected = 0: ",p_not_infected_ezk_0)
+
+#Given EZK = 1, probability that Infected = 1
+p_infected_ezk_1 = inv.logit(mean(mcmcChainDF$alpha.4.) + mean(mcmcChainDF$beta.4.))
+cat("Given EZK = 1, probability that Infected = 1: ", p_infected_ezk_1)
+
+#Given EZK = 1, probability that Infected = 0
+p_note_infected_ezk_1 = 1-p_infected_ezk_1
+cat("Given EZK = 1, probability that Infected = 0: ",p_note_infected_ezk_1)
+
+cat("If the insurance provider decides to treat patients who test positive for K9C9 using the EZK test, the estimated cost/person is: $", round((p_infected_ezk_0 * 1490 + p_not_infected_ezk_0*0 + p_infected_ezk_1*457 + p_note_infected_ezk_1*457),2))
+
+#Percentage of Country D infected
+country_D_thetas = mcmcChainDF[327:426]
+predictions = data.frame(apply(country_D_thetas, 2, mean))
+predictions = predictions[,1]
+count_infected = length(predictions[predictions>0.5])
+prop_infected_d = count_infected/100
+cat("The estimated proportion of country D's population that is infected: ", prop_infected_d)
+
+cat("Using this proportion, we can estimate that, if the insurance provider decides NOT to treat patients who test positive for K9C9 using  the EZK test, the estimated cost/person is: $", prop_infected_d * 1490)
+
+
+
+```
+

@@ -1,0 +1,25 @@
+{
+    "contents" : "",
+    "created" : 1456003615583.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "D1F34B9C",
+    "lastKnownWriteTime" : 4360126464,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "trczqb5zs9",
+        "caption" : "basketball_use",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=basketball_use&cache_key=trczqb5zs9",
+        "displayedObservations" : 1706,
+        "environment" : "",
+        "object" : "basketball_use",
+        "totalObservations" : 1706,
+        "variables" : 5
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "type" : "r_dataframe"
+}

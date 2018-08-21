@@ -1,0 +1,83 @@
+---
+title: "Homework4"
+author: "Tyler Poelking"
+date: "2/13/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+Question 1)
+
+a.	A non-informative prior would be if θ ~ Uniform(-1, 1). This gives θ  an equal chance to be anywhere between (-1, 1). I chose these parameter values because the difference in shots made frequency cannot be less than -1 nor greater than 1.
+b.	A subjective prior based on my knowledge of free throw shooting would be θ ~ Normal(mean = 0.2, sd = 0.3). I chose 0.2 for the mean because it is likely that daily 50 practice shots over a month increases their shooting percentage but not by a drastic amount. I chose 0.2 because the percent improvement will vary a decent amount given student's prior skillset and their natural athletic abilities. (0.2-2(0.3), 0.2+2(0.3)) = (-0.4, 0.5).
+
+
+Question 2)
+
+a) Plot the prior density function for θ in R.
+```{r Question 2 Part a}
+betaplot <- function(a,b){
+    theta = seq(0,1,0.005)
+    p_theta = dbeta(theta, a, b)
+    p <- qplot(theta, p_theta, geom='line')
+    p <- p + theme_bw()
+    p <- p + ylab(expression(paste('p(',theta,')', sep = '')))
+    p <- p + xlab(expression(theta))
+    return(p)}
+
+sprintf("Beta Distribution with a = %s and b = %s", 4, 4)
+betaplot(4,4)
+```
+
+
+b) Flip the coin one time and find the posterior distribution for θθ conditional on the outcome of the flip. Plot the posterior density function in R. 
+
+In this case a head was received.
+```{r Question 2 Part b}
+
+a = 4
+b = 4
+# calculate posterior a
+a2 = a + 1    
+      				
+# calculate posterior b
+b2 = b + 1 -1
+
+betaplot(a2,b2)
+
+
+```
+
+
+C) Now assume that the prior distribution for θ is the posterior distribution from part b. Flip the coin again. Find the the new posterior of θ and plot the posterior density function.
+
+In this case a head was received again.
+```{r Question 2 Part c}
+
+# calculate posterior a
+a3 = a2 + 1    
+      				
+# calculate posterior b
+b3 = b2 + 1 -1
+
+betaplot(a3,b3)
+```
+
+
+D) Assuming the original Beta(4,4) prior distribution for θθ, find the posterior distribution of θ conditional on the outcome of both coin flips. Compare this posterior distribution to the one you obtained in part c.
+```{r Question 2 Part d}
+
+# calculate posterior a
+a4 = a + 2  
+      				
+# calculate posterior b
+b4 = b + 2 -2
+
+betaplot(a4,b4)
+```
+
+The two distributions are exactly the same, with a = 6 and b = 4. In part b we added 1 to 'a' and in part c we added 1 again. In part d we added 1 twice. In part b and c we added 1 and subtracted 1 from 'b'. In part d we added 2 and subtracted 2. 

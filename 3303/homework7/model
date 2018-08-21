@@ -1,0 +1,17 @@
+model
+{
+for(i in 1:nPairs){
+    y[i] ~ dbern(theta[school[i], pair[i]])
+    logit(theta{school[i], pair[i]]) <- (alpha[school[i]] +beta[school[i]]*x[i])
+}
+
+for (s in 1:nSchools){
+    beta[s] ~ dnorm(mu.beta, sig2.beta)
+    alpha[s] ~  dborm(mu.alpha, sig2.alpha)
+}
+
+mu.beta ~  dnorm(1,1/9)
+mu.alpha ~dnorm(1,1/9)
+sig.beta ~dunif(1,9)
+sig.alpha ~dunif(1,9)
+}

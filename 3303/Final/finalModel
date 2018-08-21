@@ -1,0 +1,17 @@
+model
+{
+  for(i in 1:nTotal){
+      Infected[i] ~ dbern(theta[i])
+      logit(theta[i]) <- alpha[country[i]] + beta[country[i]] * ezk[i]
+    }
+  for(s in 1:nC){
+    alpha[s] ~ dnorm(mu_alpha, tau2_alpha)
+    beta[s] ~ dnorm(mu_beta, tau2_beta)
+  }
+  mu_alpha ~ dnorm(0, 1/9)
+  mu_beta ~ dnorm(0, 1/9)
+  sigma2_alpha ~ dunif(0, 9)
+  sigma2_beta ~ dunif(0, 9)
+  tau2_alpha <- 1/sigma2_alpha
+  tau2_beta <- 1/sigma2_beta
+}

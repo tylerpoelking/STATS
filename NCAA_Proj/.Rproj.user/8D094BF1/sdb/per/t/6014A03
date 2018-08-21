@@ -1,0 +1,25 @@
+{
+    "contents" : "",
+    "created" : 1456003702956.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "6014A03",
+    "lastKnownWriteTime" : 4318394896,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "rmb8i5gko4",
+        "caption" : "dataDF",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=dataDF&cache_key=rmb8i5gko4",
+        "displayedObservations" : "1706",
+        "environment" : "",
+        "object" : "dataDF",
+        "totalObservations" : "1706",
+        "variables" : "5"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "type" : "r_dataframe"
+}

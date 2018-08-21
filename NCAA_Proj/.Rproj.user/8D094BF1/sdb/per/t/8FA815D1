@@ -1,0 +1,25 @@
+{
+    "contents" : "",
+    "created" : 1456004991586.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "8FA815D1",
+    "lastKnownWriteTime" : 6793541056326198784,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "ofwiwm4owj",
+        "caption" : "dataDF2",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=dataDF2&cache_key=ofwiwm4owj",
+        "displayedObservations" : 1706,
+        "environment" : "",
+        "object" : "dataDF2",
+        "totalObservations" : 1706,
+        "variables" : 5
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "type" : "r_dataframe"
+}

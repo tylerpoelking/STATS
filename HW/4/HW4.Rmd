@@ -1,0 +1,264 @@
+---
+title: "STAT 4620 HW4"
+author: "Amanda Kovalcheck & Tyler Poelking"
+date: "11/17/17"
+output: html_document
+---
+
+##Question 3
+```{r}
+#Part A
+library(ISLR)
+library(boot)
+data("Wage", package = "ISLR")
+
+#Find a polynomial model using CV 
+set.seed(1)
+cv.degree = 0
+for (i in 1:10) {
+  poly.mod = glm(wage~poly(age, i), data=Wage)
+  cv.degree[i] = cv.glm(Wage, poly.mod, K=10)$delta[2]
+}
+plot(1:10, cv.degree, xlab="Degree", ylab="CV error", type="l", main="CV Errors by Degree")
+which.min(cv.degree)
+```
+The polynomial model with degree 4 has the lowest CV error. 
+
+```{r}
+#Compare results with ANOVA 
+mod10 = lm(wage~age + I(age^2) + I(age^3) + I(age^4) + I(age^5) + I(age^5) + I(age^6) + I(age^7) + I(age^8) + I(age^9) + I(age^10), data=Wage)
+anova(mod10)
+```
+From the analysis of Variance table, depending on the alpha level, if alpha level is 0.05 one would accept the 4th degree model, however, if alpha of 0.01 is chosen, then the 3rd degree model would be accpet. These results correspond closely to our results from CV. 
+
+```{r}
+#Plot our chosen model fit to the data (model with 4th degree polynomial)
+mod4 = lm(wage~poly(age, 4), data=Wage)
+plot(wage~age, data=Wage, col="grey", main="Chosen Model Fitted to Wage Data")
+age.range = range(Wage$age)
+age.vals = seq(from=age.range[1], to=age.range[2])
+mod.pred = predict(mod4, data.frame(age=age.vals))
+lines(age.vals, mod.pred, col="red")
+
+```
+
+```{r}
+#Part B
+cv.cut = 0
+for (i in 2:10) {
+  Wage$age.cut = cut(Wage$age, i)
+  mod = glm(wage~age.cut, data=Wage)
+  cv.cut[(i-2)] = cv.glm(Wage, mod, K=10)$delta[2]
+}
+plot(3:10, cv.cut, xlab="# cuts", ylab="CV error", type="l", main="CV Error by Cut")
+
+chosen.cut = which.min(cv.cut) + 2
+chosen.cut
+```
+The plot shows that the lowest CV errors occurs when the number of cuts is 8. 
+
+```{r}
+#Produce a step function with 8 cuts 
+mod.cut8 = glm(wage~cut(age, 8), data=Wage)
+age.range = range(Wage$age)
+age.values = seq(from=age.range[1], to=age.range[2])
+mod.cut8.pred = predict(mod.cut8, data.frame(age=age.values))
+plot(wage~age, data=Wage, col="grey", main="Step function model with 8 Cuts")
+lines(age.values, mod.cut8.pred, col="red", lwd=2)
+```
+
+##Question 4
+```{r}
+#Part A
+data("Boston", package = "MASS")
+mod.poly3 = lm(nox~poly(dis,3), data = Boston)
+summary(mod.poly3)
+
+plot(Boston$dis, Boston$nox,col="grey", ylab ="nox", xlab="dis", main = "3rd Degree Polynomial: nox ~ dis")
+
+attach(Boston)
+dis.range = range(dis)
+dis.vals = seq(from = dis.range[1], to = dis.range[2], by = 0.1)
+mod.pred = predict(mod.poly3, list(dis = dis.vals))
+lines(dis.vals, mod.pred, col = "red", lwd = 2)
+
+#Part B
+#Plot polynomial fits for degrees one-ten
+rss = 0
+par(mfrow=c(2,2))
+for (i in 1:10){
+  string = "Model w/ polynomial: "
+  title = c(string, paste(i))
+  plot(Boston$dis, Boston$nox,col="grey", ylab ="nox", xlab="dis", main = title)
+  poly.mod = lm(nox~poly(dis,i), data = Boston)
+  poly.pred = predict(poly.mod, list(dis = dis.vals))
+  rss[i] = sum(poly.mod$residuals^2 )
+  lines(dis.vals, poly.pred, col = "red", lwd = 2)
+}
+
+```
+
+The residual sum of squares for each polynomial model: 
+```{r}
+rss
+
+#Part C
+#Find a polynomial model using CV 
+set.seed(1)
+cv.degree = 0
+for (i in 1:10) {
+  poly.mod = glm(nox ~ poly(dis, i), data=Boston)
+  cv.degree[i] = cv.glm(Boston, poly.mod, K=10)$delta[2]
+}
+par(mfrow=c(1,1))
+plot(1:10, cv.degree, xlab="Degree", ylab="CV error", type="l", main="CV Errors by Degree")
+which.min(cv.degree)
+```
+The polynomial with degree 4 has the lowest CV error. 
+
+```{r}
+#Part D
+library(splines)
+attach(Boston)
+range(dis)
+
+#Choose quantile-uniformly spaced knots
+dim(bs(dis,df=6))
+attr(bs(dis,df=6),"knots")
+
+par(mfrow=c(1,1))
+model.matrix=bs(dis,knots=c(2.1,3.2,5.2))
+plot(dis,model.matrix[,1],pch=20,col=1)
+points(dis,model.matrix[,2],pch=20,col=2)
+points(dis,model.matrix[,3],pch=20,col=3)
+points(dis,model.matrix[,4],pch=20,col=4)
+points(dis,model.matrix[,5],pch=20,col=5)
+points(dis,model.matrix[,6],pch=20,col=6)
+
+#spline.mod = lm(nox ~ bs(dis, df = 4), data = Boston)
+spline.mod = lm(nox ~ bs(dis, knots = c(2.1,3.2,5.2)), data = Boston)
+#basis=bs(x,df=4,knots=c(0.25,0.5,0.75),intercept=FALSE)
+attr(spline.mod,"knots")
+summary(spline.mod)
+
+#Plot the fitted spline model
+dis.grid=seq(min(dis),max(dis),length=100)
+pred.spline=predict(spline.mod,newdata=data.frame(dis=dis.grid),se=T)
+plot(dis,nox,col="grey", main = "Fitted Spline Model")
+lines(dis.grid,pred.spline$fit,col="red",lwd=2)
+lines(dis.grid,pred.spline$fit-2*pred.spline$se,lty=2)
+lines(dis.grid,pred.spline$fit+2*pred.spline$se,lty=2)
+
+#Part E
+#Fit regression spline with range of degrees of freedom
+#We chose our range to be 3-13
+rss = 0
+par(mfrow=c(2,2))
+for (i in 3:13){
+  string = "Fitted Spline w/ DF= "
+  title = title = c(string, paste(i))
+  plot(dis,nox,col="grey", main = title)
+  spline.mod = lm(nox ~ bs(dis, df = i), data = Boston)
+  pred.spline=predict(spline.mod,newdata=data.frame(dis=dis.grid),se=T)
+  lines(dis.grid,pred.spline$fit,col="red",lwd=2)
+  rss[(i-3)] = sum(spline.mod$residuals^2)
+}
+
+```
+
+The RSS for the fitted spline with degrees of freedom from 3 to 13, respecitvely:
+
+```{r}
+rss
+
+df.value = which.min(rss) + 3
+df.value
+```
+
+RSS is the smallest with degrees on freedom equal to 13. This makes sense because as the degrees of freedom increase, our model becomes more flexible, and therefore as DF is increasing, RSS decreases. 
+
+```{r}
+#Part F
+set.seed(1)
+cv.DF = 0
+for (i in 2:13){
+  spline.mod = glm(nox ~ bs(dis, df = i), data = Boston)
+  cv.DF[(i-2)] = cv.glm(Boston, spline.mod, K = 10)$delta[2]
+}
+par(mfrow=c(1,1))
+plot(3:13, cv.DF, lwd = 2, type = "l", xlab = "df", ylab = "CV error", main="CV Error by Degrees of Freedom")
+df.byCV = which.min(cv.DF) + 2
+df.byCV
+```
+
+The degrees of freeedom chosen by CV is 11. This is 2 degrees of freedom less than the model chosen by RSS (DF = 13). 
+
+##Question 5
+```{r}
+#Part A
+set.seed(1)
+x1 = rnorm(100)
+x2 = rnorm(100)
+e = rnorm(100, sd = 0.1)
+
+Y = 5 + 2*x1 + 3*x2 + e
+
+#Part B
+#Initialize beta1.hat to be 1
+beta1 = 1
+
+#Part C
+a=Y-beta1*x1
+beta2=lm(a~x2)$coef[2]
+beta2
+
+#Part D
+a=Y-beta2*x2
+beta1=lm(a~x1)$coef[2]
+beta1
+
+#Part E
+#Repeat c & d 1000 times 
+beta0 = 0
+beta1 = rep(1, 1000)
+beta2 = 0
+
+#beta1 initialized to 1, above. This initial value gets overwritten once a new value of beta one is estimated using the estimated value of beta 2. 
+for (i in 1:1000){
+  a=Y-beta1[i]*x1
+  beta2[i]=lm(a~x2)$coef[2]
+  
+  a=Y-beta2[i]*x2
+  beta1[i]=lm(a~x1)$coef[2]
+  
+  beta0[i] =lm(a~x1)$coef[1]
+}
+
+
+#plot with 1-1000 values of beta0, beta1, and beta2
+plot(1:1000, beta0, type = "l", xlab = "iteration", ylab = "beta values",col = "red", ylim = c(1,8), main = "Beta Values at Each Iteration")
+lines(1:1000, beta1, col = "blue")
+lines(1:1000, beta2, col = "green")
+legend("top", c("beta0", "beta1", "beta2"), lty = 1, col = c("red", 
+    "blue","green"))
+
+```
+
+```{r}
+#Part F
+mod.mlr = lm(Y ~ x1 + x2)
+plot(1:1000, beta0, type = "l", xlab = "iteration", ylab = "beta values",col = "red", ylim = c(1,8), main = "Beta Values (Part E) compared to MLR model")
+lines(1:1000, beta1, col = "blue")
+lines(1:1000, beta2, col = "green")
+abline(h = mod.mlr$coef[1], lty = "dashed", lwd = 3, col = rgb(0, 0, 0, alpha = 0.4))
+abline(h = mod.mlr$coef[2], lty = "dashed", lwd = 3, col = rgb(0, 0, 0, alpha = 0.4))
+abline(h = mod.mlr$coef[3], lty = "dashed", lwd = 3, col = rgb(0, 0, 0, alpha = 0.4))
+legend("top", c("beta0", "beta1", "beta2", "multiple regression"), lty = c(1,
+    1, 1, 2), col = c("red", "blue","green", "black"))
+
+```
+
+The plot shows that the beta estimates from the multiple linaer regression model are exactly the same as the ones produced in Part E. 
+
+#Part G
+One iteration produced a "good" approxiamtion to the multiple linear regression coefficient estimates. 

@@ -1,0 +1,17 @@
+model
+{
+ for(i in 1:n){
+    DeltaPCV[i] ~ dnorm(mu[i], inv_sigma_2)
+    mu[i] <- a[Breed[i]] + B1 + B2*Dose[i] + B3*Type[i] 
+ }
+
+for(j in 1:breedUniq){
+    a[j] ~ dnorm(y*Domestic[j], inv_tau_2)
+}
+  y ~ dnorm(0,1/100)
+  B1 ~dnorm(0, 1/100)
+  B2 ~dnorm(0, 1/100)
+  B3 ~dnorm(0, 1/100)
+  inv_sigma_2 ~ dgamma(3,10)
+  inv_tau_2 ~ dgamma(3,10)
+}

@@ -1,0 +1,189 @@
+---
+title: "autoproject"
+author: "Tyler Poelking"
+date: "11/29/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+load("~/Desktop/All Stuff/School Stuff/STATS/Project/Autos/test.dat")
+load("~/Desktop/All Stuff/School Stuff/STATS/Project/Autos/train.dat")
+
+attach(train)
+View(train)
+
+```
+
+
+```{r initial summaries}
+#summary function
+summary(train)
+
+#get data types of each columns
+sapply(train, class)
+train$dateCrawled <- as.Date(dateCrawled)
+train$dateCrawled <- as.Date(dateCreated)
+train$dateCrawled <- as.Date(lastSeen)
+sapply(train, class)
+
+#get levels for factor vars
+table(train$seller) #only have value "privat"
+table(train$offerType) #only have value "angebot"
+table(train$abtest)# "control":968  "test":1032
+table(train$vehicleType) #missing value:220
+#table(train$yearOfRegistration)
+table(train$gearbox)#missing value: 128
+table(train$powerPS)
+table(train$model)#missing value:126
+table(train$kilometer)
+table(train$monthOfRegistration)#missing value:205
+table(train$fuelType)#missing value:208
+table(train$brand)
+table(train$notRepairedDamage)#missing value:365
+#table(train$dateCreated)
+table(train$nrOfPictures)#only have value 0
+table(train$postalCode)
+#table(train$lastSeen)
+
+```
+Covariates that we can safetly remove: 
+The Seller variable since it is always 'privat' and never gewblich. 
+The Type variable since is always 'Angebot' and never gewblich. 
+The nrOfPictures variable since it only has v
+
+Covariates with null values that might need to be handled:
+-vehicleType
+-model
+-monthOfRegistration
+-fuelType
+-notRepairedDamage
+
+
+```{r remove useless columns}
+#remove seller, type, and nrOfPictures
+train$seller = NULL
+train$type = NULL
+train$nrOfPictures = NULL
+
+
+#noticed three year values that are far above 2018. Remove so plotting better represents the data. One of these also had a price of '12345' which is obviously #made-up 
+train <- train[which(train$yearOfRegistration <= 2018),]
+```
+
+```{r initial plots}
+#obtain integer (continuous) variabels
+s.fact <- sapply(train, is.integer)
+s.fact
+
+cont = c('price', 'yearOfRegistration', 'powerPS', 'kilometer','monthOfRegistration', 'fuelType')
+plot(train[cont])
+```
+Plot analysis: The Year of Registration and powerPS definitely show signs of being useful in predicting price. Price increases as Year of Registration increases. The effect of this relationship appears to increase as the Year of Registration increases. A transformation of this variable or perhaps some sort of piecewise function might be necessary. PowerPS (horsepower), however, appears almost linearly related to price, despite the presence of a few outliers (see bottom right and top left of the chart). The other variables and their effects are less definite and harder to make out in this simple scatterplot. We were surprised to see, for example, that higher values for the Kilometer variable does not seem to correlate with lower prices. Instead, the distribution appears nearly uniform. Further analysis of these variables and potential interactions can be seen below.
+
+
+```{r DEALING WITH EXTREMES}
+
+#Handle the outliler for price
+mean_brand = aggregate(train$price, list(train$brand), mean)
+
+for(i in levels(train$brand)){
+  row = which(mean_brand$Group.1 == i)
+  mean = mean_brand[row,2]
+  train = within(train, price[price<=1 & brand==i] <- mean)
+}
+
+#Handle the outlier for powerPS
+mean_vehicle = aggregate(train$powerPS, list(train$vehicleType), mean)
+
+for(i in levels(train$vehicleType)){
+  row = which(mean_vehicle$Group.1 == i)
+  mean = mean_vehicle[row,2]
+  train = within(train, powerPS[ powerPS<=10 & vehicleType==i] <- mean)
+  train = within(train, powerPS[ powerPS>=850 & vehicleType==i] <- mean)
+}
+
+
+
+
+```
+
+
+
+We noticed that none of the 'integer' type columns contained null values. Instead, there are 0's in places that often do not make any sense, such as the month of registration. Below, we first explore how to fill in nulls for the factor variables. Then we figure out how the 0's come into play for the continuous type variables. 
+```{r explore null}
+
+#Make the boxplot for variable with missing value
+plot(train$price~train$vehicleType,xlab="vehicleType",ylab="price",ylim=c(0,60000))#null is not significantly different than others
+plot(train$price~train$model,xlab="model",ylab="price")
+plot(train$price~train$notRepairedDamage,xlab="notRepairedDamage",ylab="price",ylim=c(0,40000))#the mean of "null" is similar to "ja"
+plot(train$price~as.factor(train$monthOfRegistration),xlab="monthOfRegistration",ylab="price",ylim=c(0,40000)) # "null" is significantly different from others
+plot(train$price~train$fuelType,xlab="fuelType",ylab="price",ylim=c(0,40000)) #Only have two observation with the level of "andere", "null" is different from others
+plot(train$price~train$gearbox,xlab="gearbox",ylab="price",ylim=c(0,40000))# "null" looks different from others
+
+
+plot(train$price~train$vehicleType,xlab="vehicle type",ylab="price",ylim=c(0,40000))# "null" looks different from others
+plot(train$price~train$brand,xlab="brand",ylab="price",ylim=c(0,40000))# "null" looks different from others
+
+
+#create new feature carType. Buckets vehicleType into 3 categories
+train$carType = ifelse(train$vehicleType == "andere", "Compact", ifelse(train$vehicleType == "bus", "Family", ifelse(train$vehicleType == "cabrio", "Luxury",ifelse(train$vehicleType == "coupe", "Luxury", ifelse(train$vehicleType == "kleinwagen", "Compact", ifelse(train$vehicleType == "kombi", "Family", ifelse(train$vehicleType == "limousine", "Family", ifelse(train$vehicleType == "suv", "Luxury", "Compact"))))))))
+
+
+boxplot(train$price~train$brand,xlab="Car Type",ylab="price",ylim=c(0,40000))
+
+plot(train$kilometer~train$yearOfRegistration,ylim=c(0,2018))
+attach(train)
+
+cor(kilometer, yearOfRegistration)
+
+```
+
+
+
+
+
+```{r exploring zip codes}
+variable1 <- substr(train$postalCode,1,1)
+train$y_1 = variable1
+
+
+variable2 <- substr(train$postalCode,1,2)
+train$postal_2 = variable2
+
+boxplot(price~variable1,data=train, main="Car Milage Data", ylab="Miles Per Gallon", ylim = c(0,20000))
+
+table(train$postal_1)
+
+boxplot(price~variable2,data=train, main="Car Milage Data", 
+  	xlab="Number of Cylinders", ylab="Miles Per Gallon", ylim = c(0,20000))
+```
+
+
+```{r exploring factors with high amounts of levels}
+library(ISLR)
+library(glmnet)
+
+set.seed(42)
+#exploring which model levels are significant utilizing lasso regression
+xfactors <- model.matrix(price ~ model)[, -1]
+x        <- as.matrix(data.frame(xfactors))
+lasso.cv = cv.glmnet(y=train$price,x=x,alpha=1)
+plot(lasso.cv)
+coef(lasso.cv)
+
+
+#exploring which brand levels are significant utilizing lasso regression
+xfactors <- model.matrix(price ~ brand)[, -1]
+x        <- as.matrix(data.frame(xfactors))
+lasso.cv = cv.glmnet(y=train$price,x=x,alpha=1)
+plot(lasso.cv)
+coef(lasso.cv)
+
+
+
+```
+
+

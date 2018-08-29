@@ -1,0 +1,126 @@
+---
+title: "Homework 6"
+author: "Tyler Poelking"
+date: "3/31/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(scatterplot3d)
+#library(rgl)
+library(tourr)
+```
+
+
+```{r Rencher and Christensen (2012), Problem 3.18 (a).}
+#Import data
+bone_length <- read.table("http://www.stat.osu.edu/~pfc/teaching/3302/datasets/bone_length.txt", header = TRUE)
+
+#remove 'individual' feat
+bl = bone_length[,-1]
+bl[,1]
+names(bl) = c('8','8.5','9','9.5')
+# (a) Find y-bar, S, and R
+yBar = colMeans(bl)
+yBar
+
+#covariance matrix
+S = round(cov(bl),2)
+S
+
+#Correlation matrix
+R = round(cor(bl), 2)
+R
+
+
+#marginal summaries
+par(mfrow=c(1,4))
+sapply(1:4, function (j) boxplot(bl[,j], main=names(bl)[j]))
+## Produce a pairs plots
+par(mfrow=c(1,1))
+pairs(bl)
+
+
+#Parallel coordinate plot
+
+matplot(t(bl), type="l", xaxt="n", col="gray",
+        xlab="Ages", ylab="Millimeter", main = 'Ramus (Jaw) Bone Length at Four Ages For 20 Boys')
+## Now we correctly label the x axis.
+axis(side=1, at=1:4, names(bl))
+## create and connect length means for each age
+points(1:4, colMeans(bl), cex=1, pch=20, type="b", lwd=2)
+
+```
+
+In the boxplots, the spread on all 4 numerical age group levels are relatively even, ranging from around 55 at the high end and 46 at the low end. The quartile deviations from the mean are around the same as well, except jaw length group corresponding to age 8.5's median is further away from its third quartile than it is from it's first quartile. The other age group's median distances from their quartiles are uniform. The box plot for each age group contain no outliers. And most importantly, the medians increase with each increase in age group. The median jaw length (in millimeters) for ages 9.5 is larger than the median jaw length for ages 9, which is larger than the median jaw length for ages 8.5, and so on. This, of course, is evidence for jaw length increasing with age.
+
+The scatter plot matrix shows the relationship between the jaw lengths, in millimeters, of each feature (in this case just age group). Each plot suggests a positive correlation between all age groups. The S and R matrix shows this to be true. Not suprisingly, correlation strength decreases the further away the age groups are from each other. The strength of positive relationship between age 8 and 8.5, for example, is stronger than the positive correlation between age 8 and 9 or age 8 and 9.5. So the jaw length at age 8 more accurately predicts the length at 8.5 than is does at 9 or 9.5.
+
+The summaries and plot above attest to the fact that a boys average ramus (jaw) length increases with age. As boys get older, this expected mm increase in jaw length every half year decreases. The average length for boys of age 8.5 is 0.97 mm larger than boys of 8.  The average length for boys of age 9 is 0.945 mm larger than boys of 8.5. Finally, the average length for boys of age 9.5 is 0.875 mm larger than boys of 9.  
+
+
+
+
+```{r Rencher and Christensen (2012), Problem 3.22}
+blood_glu <- read.table("http://www.stat.osu.edu/~pfc/teaching/3302/datasets/blood_glucose.txt", header = T)
+
+#Mean Vector
+yxBar = colMeans(blood_glu)
+yxBar
+
+#Covariance Matrix
+S = round(cov(blood_glu),2)
+S
+
+bg_1st = blood_glu[,c(1,4)]
+bg_2nd = blood_glu[,c(2,5)]
+bg_3rd = blood_glu[,c(3,6)]
+
+
+par(mfrow=c(1,3))
+
+matplot(t(bg_1st), type="l", xaxt="n", col="gray",
+        xlab="Before and After", ylab="Blood Glucose Level", main = 'First Pregnancy: Blood Glucose Level before and After Sugar Intake ')
+## Now we correctly label the x axis.
+axis(side=1, at=1:2, names(bg_1st))
+## create and connect length means for each age
+points(1:2, colMeans(bg_1st), cex=1, pch=20, type="b", lwd=2)
+
+matplot(t(bg_2nd), type="l", xaxt="n", col="gray",
+        xlab="Before and After", ylab="Blood Glucose Level", main = 'Second Pregnancy: Blood Glucose Level Before and After Sugar Intake')
+## Now we correctly label the x axis.
+axis(side=1, at=1:2, names(bg_2nd))
+## create and connect length means for each age
+points(1:2, colMeans(bg_2nd), cex=1, pch=20, type="b", lwd=2)
+
+matplot(t(bg_3rd), type="l", xaxt="n", col="gray",
+        xlab="Before and After", ylab="Blood Glucose Level", main = 'Third Pregnancy: Blood Glucose Level Before and After Sugar Intake')
+## Now we correctly label the x axis.
+axis(side=1, at=1:2, names(bg_3rd))
+## create and connect length means for each age
+points(1:2, colMeans(bg_3rd), cex=1, pch=20, type="b", lwd=2)
+
+par(mfrow=c(2,3))
+
+for (j in 1:3) {
+    qqnorm(blood_glu[,j], main=sprintf("y %d Blood Glu Measures", j))
+    qqline(blood_glu[,j])
+}
+
+for (j in 4:6) {
+    qqnorm(blood_glu[,j], main=sprintf("x %d Blood Glu Measures", j-3))
+    qqline(blood_glu[,j])
+}
+```
+
+
+
+The summary statistics along with the graphical summaries above indicate that blood glucose level rises and hour after sugar intake for pregnant women. The mean vector shows that the base blood glucose level (the y's) before sugar intake increases with each pregnancy, since the average y2 is greater than the average y1, and the average y2 is greater than the average y3. The pairs plot indicates that there is a rise in average blood glucose level after sugar intake. The rise is greatest in the first pregnancy (39.61), least in the second pregnancy (30.7), and somewhere in between (34.88) in the last pregnancy. 
+
+A qqplot for each measurement/feature indicates how well each measurement of blood glucose level follows a normal distribution. The baseline blood glucose level measurements for the first and second pregnancies are similar. Both follow a normal distribution fairly well until the later theoretical quantiles are reached, at which point the dots fall above the normal line. The baseline blood glucose level measurment for the third pregnancy has this feature too, but the level in which the dots deviate from the normal line is further exaggerated (tails off even more).
+
+The tail ends of all three post sugar intake qqplots deviate from the normal qqline. For these post sugar intake plots, the points at the lower theoretical quantiles for the first two pregnancies deviate above the normal qqline, where in the last plot corresponding to the third pregnancy, the points at the lower theoretical quantiles deviate below the normal qqline. This means that, for the third pregnancy, women whose blood level increases below the average increases even lower than if the measurement followed a normal distribution. This is of course reversed for women in their first and second pregnancy. 
+
